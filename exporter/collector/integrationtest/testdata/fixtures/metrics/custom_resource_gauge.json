@@ -1,0 +1,73 @@
+{
+  "resourceMetrics": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "gcp.resource_type",
+            "value": {
+              "stringValue": "custom_resource"
+            }
+          },
+          {
+            "key": "gcp.custom_resource.label1",
+            "value": {
+              "stringValue": "value1"
+            }
+          },
+          {
+            "key": "gcp.custom_resource.label2",
+            "value": {
+              "stringValue": "value2"
+            }
+          },
+          {
+            "key": "other.label",
+            "value": {
+              "stringValue": "otherValue"
+            }
+          }
+        ]
+      },
+      "scopeMetrics": [
+        {
+          "scope": {},
+          "metrics": [
+            {
+              "name": "simple.gauge",
+              "unit": "s",
+              "gauge": {
+                "dataPoints": [
+                  {
+                    "attributes": [
+                      {
+                        "key": "some.lemons",
+                        "value": {
+                          "stringValue": "13"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1649443516286000000",
+                    "asDouble": 1
+                  },
+                  {
+                    "attributes": [
+                      {
+                        "key": "some.lemons",
+                        "value": {
+                          "stringValue": "1"
+                        }
+                      }
+                    ],
+                    "timeUnixNano": "1649443516286000000",
+                    "asDouble": 13
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

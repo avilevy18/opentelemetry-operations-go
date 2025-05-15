@@ -25,6 +25,11 @@ import (
 	"github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping"
 )
 
+var (
+	mappingKey                   = "gcp.resource_type"
+	monitoredResourceLabelPrefix = "gcp."
+)
+
 type attributes struct {
 	Attrs pcommon.Map
 }
@@ -49,6 +54,39 @@ func defaultResourceToLoggingMonitoredResource(resource pcommon.Resource) *monit
 	return resourcemapping.ResourceAttributesToLoggingMonitoredResource(&attributes{
 		Attrs: resource.Attributes(),
 	})
+}
+
+func CustomResourceToMonitoredResource(r pcommon.Resource) *monitoredrespb.MonitoredResource {
+	var monitoredResourceType string
+	monitoredResourceLabels := make(map[string]string)
+
+	r.Attributes().Range(func(k string, v pcommon.Value) bool {
+		if k == mappingKey {
+			monitoredResourceType = v.AsString()
+			return false
+		}
+		return true
+	})
+
+	if monitoredResourceType == "" {
+		return resourcemapping.ResourceAttributesToMonitoringMonitoredResource(&attributes{
+			Attrs: r.Attributes(),
+		})
+	}
+
+	prefix := monitoredResourceLabelPrefix + monitoredResourceType + "."
+
+	r.Attributes().Range(func(k string, v pcommon.Value) bool {
+		if len(k) > len(prefix) && k[:len(prefix)] == prefix {
+			monitoredResourceLabels[k[len(prefix):]] = v.AsString()
+		}
+		return true
+	})
+
+	return &monitoredrespb.MonitoredResource{
+		Type:   monitoredResourceType,
+		Labels: monitoredResourceLabels,
+	}
 }
 
 // resourceToLabels converts the Resource attributes into labels.

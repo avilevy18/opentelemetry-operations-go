@@ -96,4 +96,12 @@ var LogsTestCases = []TestCase{
 			cfg.UserAgent = "custom-user-agent {{version}}"
 		},
 	},
+	{
+		Name:                 "Logs custom resource mapping",
+		OTLPInputFixturePath: "testdata/fixtures/logs/logs_custom_resource.json",
+		ExpectFixturePath:    "testdata/fixtures/logs/logs_custom_resource_expected.json",
+		ConfigureCollector: func(cfg *collector.Config) {
+			cfg.LogConfig.MapMonitoredResource = collector.CustomResourceToMonitoredResource
+		},
+	},
 }

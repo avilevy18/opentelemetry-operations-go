@@ -35,9 +35,18 @@ import (
 
 type Option func(*Config)
 
-func newTestLogMapper(entrySize int, opts ...Option) logMapper {
-	obs := selfObservability{log: zap.NewNop()}
+func newDefaultTestLogMapper(entrySize int, opts ...Option) logMapper {
+	return newTestLogMapper(entrySize, DefaultConfig(), opts...)
+}
+
+func newCustomResourceTestLogMapper(entrySize int, opts ...Option) logMapper {
 	cfg := DefaultConfig()
+	cfg.LogConfig.MapMonitoredResource = CustomResourceToMonitoredResource
+	return newTestLogMapper(entrySize, cfg, opts...)
+}
+
+func newTestLogMapper(entrySize int, cfg Config, opts ...Option) logMapper {
+	obs := selfObservability{log: zap.NewNop()}
 	cfg.LogConfig.DefaultLogName = "default-log"
 	for _, opt := range opts {
 		if opt != nil {
@@ -140,7 +149,8 @@ func TestLogMapping(t *testing.T) {
 				},
 			},
 			maxEntrySize: defaultMaxEntrySize,
-		}, {
+		},
+		{
 			name: "log with invalid json byte body returns raw byte string",
 			log: func() plog.LogRecord {
 				log := plog.NewLogRecord()
@@ -815,35 +825,51 @@ func TestLogMapping(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			log := testCase.log()
-			mr := testCase.mr()
-			mapper := newTestLogMapper(testCase.maxEntrySize, testCase.config)
-			logName, _ := mapper.getLogName(log)
-			entries, err := mapper.logToSplitEntries(
-				log,
-				mr,
-				nil,
-				testObservedTime,
-				logName,
-				"fakeprojectid",
-			)
+		for _, m := range []struct {
+			name   string
+			mapper func(entrySize int, opts ...Option) logMapper
+		}{
+			{
+				name:   "default",
+				mapper: newDefaultTestLogMapper,
+			},
+			{
+				name:   "custom resource",
+				mapper: newCustomResourceTestLogMapper,
+			},
+		} {
+			t.Run(m.name, func(t *testing.T) {
+				t.Run(testCase.name, func(t *testing.T) {
+					log := testCase.log()
+					mr := testCase.mr()
+					mapper := m.mapper(testCase.maxEntrySize, testCase.config)
+					logName, _ := mapper.getLogName(log)
+					entries, err := mapper.logToSplitEntries(
+						log,
+						mr,
+						nil,
+						testObservedTime,
+						logName,
+						"fakeprojectid",
+					)
 
-			if testCase.expectError {
-				assert.NotNil(t, err)
-				if testCase.expectedError != nil {
-					assert.Equal(t, err.Error(), testCase.expectedError.Error())
-				}
-			} else {
-				assert.Nil(t, err)
-				assert.Equal(t, len(testCase.expectedEntries), len(entries))
-				for i := range testCase.expectedEntries {
-					if !proto.Equal(testCase.expectedEntries[i], entries[i]) {
-						assert.Equal(t, testCase.expectedEntries[i], entries[i])
+					if testCase.expectError {
+						assert.NotNil(t, err)
+						if testCase.expectedError != nil {
+							assert.Equal(t, err.Error(), testCase.expectedError.Error())
+						}
+					} else {
+						assert.Nil(t, err)
+						assert.Equal(t, len(testCase.expectedEntries), len(entries))
+						for i := range testCase.expectedEntries {
+							if !proto.Equal(testCase.expectedEntries[i], entries[i]) {
+								assert.Equal(t, testCase.expectedEntries[i], entries[i])
+							}
+						}
 					}
-				}
-			}
-		})
+				})
+			})
+		}
 	}
 }
 
@@ -876,7 +902,7 @@ func TestGetLogName(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			log := testCase.log()
-			mapper := newTestLogMapper(defaultMaxEntrySize)
+			mapper := newDefaultTestLogMapper(defaultMaxEntrySize)
 			name, err := mapper.getLogName(log)
 			if testCase.expectError {
 				assert.NotNil(t, err)

@@ -875,3 +875,68 @@ func TestResourceMetricsToMonitoredResourceUTF8(t *testing.T) {
 	extraLabels := attributesToLabels(filterAttributes(r.Attributes(), mapper.cfg.MetricConfig.ServiceResourceLabels, mapper.cfg.MetricConfig.ResourceFilters))
 	assert.Equal(t, expectExtraLabels, extraLabels)
 }
+
+func TestCustomMonitoredResourceMapping(t *testing.T) {
+	tests := []struct {
+		resourceLabels map[string]string
+		expectMr       *monitoredrespb.MonitoredResource
+		name           string
+	}{
+		{
+			name: "Custom Monitored Resource",
+			resourceLabels: map[string]string{
+				"gcp.resource_type":          "custom_resource",
+				"gcp.custom_resource.label1": "value1",
+				"gcp.custom_resource.label2": "value2",
+				"other.label":                "otherValue",
+			},
+			expectMr: &monitoredrespb.MonitoredResource{
+				Type: "custom_resource",
+				Labels: map[string]string{
+					"label1": "value1",
+					"label2": "value2",
+				},
+			},
+		},
+		{
+			name: "No Custom Monitored Resource",
+			resourceLabels: map[string]string{
+				"other.label": "otherValue",
+			},
+			expectMr: &monitoredrespb.MonitoredResource{
+				Type: "generic_node",
+				Labels: map[string]string{
+					"location":  "global",
+					"namespace": "",
+					"node_id":   "",
+				},
+			},
+		},
+		{
+			name: "Empty Custom Monitored Resource",
+			resourceLabels: map[string]string{
+				"gcp.resource_type": "",
+				"gcp..label1":       "value1",
+			},
+			expectMr: &monitoredrespb.MonitoredResource{
+				Type: "generic_node",
+				Labels: map[string]string{
+					"location":  "global",
+					"namespace": "",
+					"node_id":   "",
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := pcommon.NewResource()
+			for k, v := range test.resourceLabels {
+				r.Attributes().PutStr(k, v)
+			}
+			mr := CustomResourceToMonitoredResource(r)
+			assert.Equal(t, test.expectMr, mr)
+		})
+	}
+}

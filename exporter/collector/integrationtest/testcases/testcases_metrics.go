@@ -473,6 +473,17 @@ var MetricsTestCases = []TestCase{
 		// We don't support disabling metric descriptor creation for the SDK exporter
 		SkipForSDK: true,
 	},
+	{
+		Name:                 "Gauge becomes a GCM Gauge with custom resource",
+		OTLPInputFixturePath: "testdata/fixtures/metrics/custom_resource_gauge.json",
+		ExpectFixturePath:    "testdata/fixtures/metrics/custom_resource_gauge_expect.json",
+		ConfigureCollector: func(cfg *collector.Config) {
+			cfg.MetricConfig.MapMonitoredResource = collector.CustomResourceToMonitoredResource
+			cfg.MetricConfig.InstrumentationLibraryLabels = false
+			cfg.MetricConfig.ServiceResourceLabels = false
+		},
+		MetricSDKExporterOptions: []metric.Option{metric.WithFilteredResourceAttributes(metric.NoAttributes)},
+	},
 	// TODO: Add integration tests for workload.googleapis.com metrics from the ops agent
 }
 
